@@ -1,0 +1,43 @@
+---
+title: "p8105_hw6_ph2538"
+author: "Pei Yang Hsieh"
+date: 2018-11-18
+output: github_document
+---
+
+
+```{r setup, include=FALSE}
+library(tidyverse)
+```
+
+## Problem 1
+
+Create a city_state variable (e.g. “Baltimore, MD”), and a binary variable indicating whether the homicide is solved. Omit cities Dallas, TX; Phoenix, AZ; and Kansas City, MO – these don’t report victim race. Also omit Tulsa, AL – this is a data entry mistake. Modifiy victim_race to have categories white and non-white, with white as the reference category. Be sure that victim_age is numeric.
+
+```{r}
+homicide_data = read_csv(file = "./homicide-data.csv")
+
+#create city_state variable and omit certain cities
+homicide_data =
+  homicide_data %>% 
+  mutate(city_state = str_c(city, ", ", state)) %>% 
+  filter(city_state != "Dallas, TX", city_state != "Phoenix, AZ", city_state != "Kansas City, MO", city_state != "Tulsa, AL") 
+
+#create binary variable
+homicide_data = 
+  homicide_data %>% 
+  mutate(hom_solved = disposition != "Closed without arrest" & disposition != "Open/No arrest")
+
+#modify victim_race to binary category
+homicide_data = 
+  homicide_data %>% 
+  mutate(victim_race = recode(victim_race, 'White' = "White", 'Hispanic' = "Non_white", 'Other' = "Non_white", 'Black' = "Non_white", 'Asian' = "Non_white", 'Unknown' = "Non_white"))
+
+#change victim_age to numeric
+homicide_data = 
+  homicide_data %>% 
+  mutate(victim_age = as.numeric(victim_age))
+
+
+```
+
