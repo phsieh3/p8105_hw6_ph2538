@@ -30,7 +30,7 @@ homicide_data =
   homicide_data %>% 
   mutate(hom_solved = as.numeric(disposition == "Closed by arrest"))
 
-#modify victim_race to binary category
+#modify victim_race to binary category. Note that "Unknown" race is included in Non-white category.
 homicide_data = 
   homicide_data %>% 
   mutate(victim_race = recode(victim_race, 'White' = "White", 'Hispanic' = "Non_white", 'Other' = "Non_white", 'Black' = "Non_white", 'Asian' = "Non_white", 'Unknown' = "Non_white")) %>% 
@@ -48,7 +48,7 @@ homicide_data =
 
 ### GLM on Baltimore, MD
 
-For the city of Baltimore, MD, use the glm function to fit a logistic regression with resolved vs unresolved as the outcome and victim age, sex and race (as just defined) as predictors. Save the output of glm as an R object; apply the broom::tidy to this object; and obtain the estimate and confidence interval of the adjusted odds ratio for solving homicides comparing black victims to white victims keeping all other variables fixed.
+For the city of Baltimore, MD, use the glm function to fit a logistic regression with resolved vs unresolved as the outcome and victim age, sex and race (as just defined) as predictors. Save the output of glm as an R object; apply the broom::tidy to this object; and obtain the estimate and confidence interval of the adjusted odds ratio for solving homicides comparing nonwhite victims to white victims keeping all other variables fixed.
 
 ```{r}
 Baltimore_df = 
@@ -61,13 +61,12 @@ Baltimore_glm =
   glm(hom_solved ~ victim_age + victim_race + victim_sex, data = ., family = binomial()) %>% 
   broom::tidy() %>% 
   mutate(OR = exp(estimate)) %>%
-  select(term, log_OR = estimate, OR, p.value) %>% 
+  mutate(conf.low = exp(estimate - (1.96 * std.error)), 
+         conf.high = exp(estimate + (1.96 * std.error))) %>% 
+  select(term, log_OR = estimate, OR, p.value, conf.low, conf.high) %>% 
   knitr::kable(digits = 3)
 
 Baltimore_glm  
-
-#how to get conf intervals
-#confint(Baltimore_glm)
   
 ```
 
@@ -91,7 +90,12 @@ all_cities_glm =
   select(-data) %>% 
   unnest() %>% 
   mutate(OR = exp(estimate)) %>%
-  select(city_state, term, log_OR = estimate, OR, p.value) 
+  mutate(conf.low = exp(estimate - (1.96 * std.error)), 
+         conf.high = exp(estimate + (1.96 * std.error))) %>% 
+  select(city_state, term, log_OR = estimate, OR, p.value, conf.low, conf.high) %>% 
+  filter(term != "victim_sexUnknown")
+
+all_cities_glm
 
 ```
 
@@ -103,7 +107,7 @@ Create a plot that shows the estimated ORs and CIs for each city. Organize citie
 ```{r, eval = FALSE}
 Plot_all_cities =
   all_cities_glm %>% 
-  ggplot(aes(fct_reorder(city_state, log_OR), log_OR)) +
+  ggplot(aes(fct_reorder(city_state, OR), OR)) +
   geom_point() +
   geom_errorbar(aes(ymin = conf.low, ymax = conf.high)) +
   labs(
@@ -136,6 +140,59 @@ birthweight_data =
 Propose a regression model for birthweight. This model may be based on a hypothesized structure for the factors that underly birthweight, on a data-driven model-building process, or a combination of the two. Describe your modeling process and show a plot of model residuals against fitted values – use add_predictions and add_residuals in making this plot.
 
 ```{r}
+mod_inc_mrace = 
+  birthweight_data %>%
+  select(bwt, fincome, mrace)
 
+lm_inc_mrace = lm(bwt ~ fincome + mrace, mod_inc_mrace)
+
+lm_inc_mrace %>% 
+  broom::tidy() %>% 
+  select(term, estimate, p.value) %>% 
+  knitr::kable(digits = 3)
+
+modelr::add_residuals(mod_inc_mrace, lm_inc_mrace)
+
+modelr::add_predictions(mod_inc_mrace, lm_inc_mrace)
+  
+```
+
+### Plot model
+
+```{r}
+mod_inc_mrace %>% 
+  modelr::add_residuals(lm_inc_mrace) %>% 
+  ggplot(aes(x = mrace, y = resid)) + geom_violin()
+```
+
+
+```{r}
+mod_inc_mrace %>% 
+  modelr::add_predictions(lm_inc_mrace) %>% 
+  ggplot(aes(x = mrace, y = pred)) + geom_violin()
+```
+
+
+### Comparing models
+
+Compare your model to two others:
+One using length at birth and gestational age as predictors (main effects only)
+One using head circumference, length, sex, and all interactions (including the three-way interaction) between these
+
+```{r}
+mod_len_age = 
+  birthweight_data %>%
+  select(bwt, blength, gaweeks)
+
+lm_len_age = lm(bwt ~ blength + gaweeks, mod_len_age)
+
+lm_len_age %>% 
+  broom::tidy() %>% 
+  select(term, estimate, p.value) %>% 
+  knitr::kable(digits = 3)
+
+modelr::add_residuals(mod_len_age, lm_len_age)
+
+modelr::add_predictions(mod_len_age, lm_len_age)
 ```
 
