@@ -179,6 +179,8 @@ Compare your model to two others:
 One using length at birth and gestational age as predictors (main effects only)
 One using head circumference, length, sex, and all interactions (including the three-way interaction) between these
 
+Make this comparison in terms of the cross-validated prediction error; use crossv_mc and functions in purrr as appropriate.
+
 ```{r}
 mod_len_age = 
   birthweight_data %>%
@@ -194,5 +196,24 @@ lm_len_age %>%
 modelr::add_residuals(mod_len_age, lm_len_age)
 
 modelr::add_predictions(mod_len_age, lm_len_age)
+```
+
+
+
+```{r}
+mod_hc_len_sex = 
+  birthweight_data %>%
+  select(bwt, bhead, blength, babysex)
+
+lm_hc_len_sex = lm(bwt ~ bhead + blength + babysex, mod_hc_len_sex)
+
+lm_hc_len_sex %>% 
+  broom::tidy() %>% 
+  select(term, estimate, p.value) %>% 
+  knitr::kable(digits = 3)
+
+modelr::add_residuals(mod_hc_len_sex, lm_hc_len_sex)
+
+modelr::add_predictions(mod_hc_len_sex, lm_hc_len_sex)
 ```
 
