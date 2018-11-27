@@ -5,6 +5,7 @@ date: 2018-11-26
 output: github_document
 ---
 
+The purpose of this file is to complete homework 6.
 
 ```{r setup, include=FALSE}
 library(tidyverse)
@@ -91,8 +92,8 @@ all_cities_glm =
   all_cities_df %>% 
   group_by(city_state) %>% 
   nest() %>% 
-  mutate(model = map(data, ~glm(hom_solved ~ victim_age + victim_race + victim_sex, data = ., family = binomial())),
-  model = map(model, broom::tidy)) %>% 
+  mutate(all_cities_output = map(data, ~glm(hom_solved ~ victim_age + victim_race + victim_sex, data = ., family = binomial())),
+  all_cities_output = map(all_cities_output, broom::tidy)) %>% 
   select(-data) %>% 
   unnest() %>% 
   mutate(OR = exp(estimate)) %>%
@@ -146,57 +147,60 @@ birthweight_data =
 
 ### Build a model
 
-Propose a regression model for birthweight. This model may be based on a hypothesized structure for the factors that underly birthweight, on a data-driven model-building process, or a combination of the two. 
+Propose a regression model for birthweight. This model may be based on a hypothesized structure for the factors that underly birthweight, on a data-driven model-building process, or a combination of the two.  
 
 ```{r}
-mod_inc_mrace = 
+mod_inc_delwt = 
   birthweight_data %>%
-  select(bwt, fincome, mrace)
+  select(bwt, fincome, delwt)
 
-lm_inc_mrace = lm(bwt ~ fincome + mrace, mod_inc_mrace)
+lm_inc_delwt = lm(bwt ~ fincome + delwt, mod_inc_delwt)
 
-lm_inc_mrace %>% 
+lm_inc_delwt %>% 
   broom::tidy() %>% 
   select(term, estimate, p.value) %>% 
   knitr::kable(digits = 3)
 
-modelr::add_residuals(mod_inc_mrace, lm_inc_mrace)
+modelr::add_residuals(mod_inc_delwt, lm_inc_delwt)
 
-modelr::add_predictions(mod_inc_mrace, lm_inc_mrace)
+modelr::add_predictions(mod_inc_delwt, lm_inc_delwt)
   
 ```
 
-This is a linear regression model of birthweight with family income and mother's race as predictors.
+This is a linear regression model of birthweight with family income and mother's weight at delivery as predictors. I hypothesized that both of these variables may be associated with birthweight. For instance, family income may reflect a family's resources and mother's weight may be an indication of mother's nutritional status and health.
 
 ### Plot model
 
 ```{r}
-mod_inc_mrace %>% 
-  modelr::add_residuals(lm_inc_mrace) %>% 
-  ggplot(aes(x = mrace, y = resid)) + geom_violin()
+mod_inc_delwt %>% 
+  modelr::add_residuals(lm_inc_delwt) %>% 
+  ggplot(aes(x = delwt, y = resid)) + geom_violin()
 ```
 
+
+This plot shows that most of the residuals fall around 0 for mother's weight at delivery, which means it may be a good model.
 
 ```{r}
-mod_inc_mrace %>% 
-  modelr::add_predictions(lm_inc_mrace) %>% 
-  ggplot(aes(x = mrace, y = pred)) + geom_violin()
+mod_inc_delwt %>% 
+  modelr::add_residuals(lm_inc_delwt) %>% 
+  ggplot(aes(x = fincome, y = resid)) + geom_violin()
 ```
 
+Similarly, this plot shows that most of the residuals fall around 0 for family income, which means it may be a good model.
 
-## Plot of model residuals against fitted values
+### Plot of model residuals against fitted values
 
 Describe your modeling process and show a plot of model residuals against fitted values – use add_predictions and add_residuals in making this plot.
 
 ```{r}
 birthweight_data %>% 
-  modelr::add_residuals(lm_inc_mrace) %>% 
-  modelr::add_predictions(lm_inc_mrace) %>% 
+  modelr::add_residuals(lm_inc_delwt) %>% 
+  modelr::add_predictions(lm_inc_delwt) %>% 
   ggplot(aes(x = pred, y = resid)) + geom_point()
 ```
 
 
-As mother race is a categorical variable with 4 categories, this plot shows four clusters. 
+This plot shows that most points cluster (around resid = 0 and pred = 3100), which indicates that it may be a good model.
 
 ### Creating 2 other models
 
@@ -240,7 +244,7 @@ modelr::add_residuals(mod_hc_len_sex, lm_hc_len_sex)
 modelr::add_predictions(mod_hc_len_sex, lm_hc_len_sex)
 ```
 
-## Comparing 3 models
+### Comparing 3 models
 
 Make this comparison in terms of the cross-validated prediction error; use crossv_mc and functions in purrr as appropriate.
 
@@ -250,17 +254,17 @@ cv_df =
 
 cv_df = 
   cv_df %>% 
-  mutate(mod_inc_mrace = map(train, ~lm(bwt ~ fincome + mrace, data = .x)),
+  mutate(mod_inc_delwt = map(train, ~lm(bwt ~ fincome + delwt, data = .x)),
          mod_len_age = map(train, ~lm(bwt ~ blength + gaweeks, data = .x)),
          mod_hc_len_sex = map(train, ~lm(bwt ~ bhead + blength + babysex + bhead*blength + bhead*babysex + blength*babysex + bhead*blength*babysex, data = .x))) %>% 
-  mutate(rmse_inc_mrace    = map2_dbl(mod_inc_mrace, test, ~rmse(model = .x, data = .y)),
+  mutate(rmse_inc_delwt    = map2_dbl(mod_inc_delwt, test, ~rmse(model = .x, data = .y)),
          rmse_len_age = map2_dbl(mod_len_age, test, ~rmse(model = .x, data = .y)),
          rmse_hc_len_sex = map2_dbl(mod_hc_len_sex, test, ~rmse(model = .x, data = .y)))
 
 ```
 
 
-## RMSE plot and values
+### RMSE plot and values
 
 ```{r}
 cv_df %>% 
@@ -273,7 +277,7 @@ cv_df %>%
 
 
 ```{r}
-rmse(lm_inc_mrace, birthweight_data)
+rmse(lm_inc_delwt, birthweight_data)
 
 rmse(lm_len_age, birthweight_data)
 
@@ -281,4 +285,4 @@ rmse(lm_hc_len_sex, birthweight_data)
 ```
 
 
-The hc_len_sex model is the best because it has the lowest RMSE value of `r rmse(lm_hc_len_sex, birthweight_data)`. In contrast, the inc_mrace is the worst model with the highest RMSE value of `r rmse(lm_inc_mrace, birthweight_data)`
+The model using head circumference, length, sex, and all interactions (including the three-way interaction) between these (hc_len_sex) is the best model because it has the lowest RMSE value of `r rmse(lm_hc_len_sex, birthweight_data)`. In contrast, model using monthly family income and mother's weight at delivery (inc_delwt) is the worst model with the highest RMSE value of `r rmse(lm_inc_delwt, birthweight_data)`
