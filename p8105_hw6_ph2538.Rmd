@@ -8,6 +8,8 @@ output: github_document
 
 ```{r setup, include=FALSE}
 library(tidyverse)
+library(modelr)
+library(mgcv)
 ```
 
 ## Problem 1
@@ -28,7 +30,8 @@ homicide_data =
 #create binary variable
 homicide_data = 
   homicide_data %>% 
-  mutate(hom_solved = as.numeric(disposition == "Closed by arrest"))
+  mutate(hom_solved = recode(disposition, "Closed by arrest" = "Yes", "Closed without arrest" = "No", "Open/No arrest" = "No")) %>%
+  mutate(hom_solved = as.factor(hom_solved))
 
 #modify victim_race to binary category. Note that "Unknown" race is included in Non-white category.
 homicide_data = 
@@ -64,6 +67,7 @@ Baltimore_glm =
   mutate(conf.low = exp(estimate - (1.96 * std.error)), 
          conf.high = exp(estimate + (1.96 * std.error))) %>% 
   select(term, log_OR = estimate, OR, p.value, conf.low, conf.high) %>% 
+  filter(term == "victim_raceNon_white") %>% 
   knitr::kable(digits = 3)
 
 Baltimore_glm  
@@ -71,9 +75,11 @@ Baltimore_glm
 ```
 
 
+The adjusted OR for solving homicides comparing nonwhite victims to white victims is 0.441.
+
 ### GLM on all cities
 
-Now run glm for each of the cities in your dataset, and extract the adjusted odds ratio (and CI) for solving homicides comparing black victims to white victims. Do this within a “tidy” pipeline, making use of purrr::map, list columns, and unnest as necessary to create a dataframe with estimated ORs and CIs for each city.
+Now run glm for each of the cities in your dataset, and extract the adjusted odds ratio (and CI) for solving homicides comparing nonwhite victims to white victims. Do this within a “tidy” pipeline, making use of purrr::map, list columns, and unnest as necessary to create a dataframe with estimated ORs and CIs for each city.
 
 ```{r}
 
@@ -93,7 +99,7 @@ all_cities_glm =
   mutate(conf.low = exp(estimate - (1.96 * std.error)), 
          conf.high = exp(estimate + (1.96 * std.error))) %>% 
   select(city_state, term, log_OR = estimate, OR, p.value, conf.low, conf.high) %>% 
-  filter(term != "victim_sexUnknown")
+  filter(term == "victim_raceNon_white")
 
 all_cities_glm
 
@@ -173,7 +179,7 @@ mod_inc_mrace %>%
 ```
 
 
-### Comparing models
+### Creating 2 other models
 
 Compare your model to two others:
 One using length at birth and gestational age as predictors (main effects only)
@@ -205,7 +211,7 @@ mod_hc_len_sex =
   birthweight_data %>%
   select(bwt, bhead, blength, babysex)
 
-lm_hc_len_sex = lm(bwt ~ bhead + blength + babysex, mod_hc_len_sex)
+lm_hc_len_sex = lm(bwt ~ bhead + blength + babysex + bhead*blength + bhead*babysex + blength*babysex + bhead*blength*babysex, mod_hc_len_sex)
 
 lm_hc_len_sex %>% 
   broom::tidy() %>% 
@@ -217,3 +223,52 @@ modelr::add_residuals(mod_hc_len_sex, lm_hc_len_sex)
 modelr::add_predictions(mod_hc_len_sex, lm_hc_len_sex)
 ```
 
+## Comparing 3 models
+
+```{r}
+cv_df = 
+  crossv_mc(birthweight_data, 100) 
+
+# cv_df %>% pull(train) %>% .[[1]] %>% as_tibble
+# 
+# cv_df %>% pull(test) %>% .[[1]] %>% as_tibble
+# 
+# cv_df =
+#   cv_df %>% 
+#   mutate(train = map(train, as_tibble),
+#          test = map(test, as_tibble))
+
+cv_df = 
+  cv_df %>% 
+  mutate(mod_inc_mrace = map(train, ~lm(bwt ~ fincome + mrace, data = .x)),
+         mod_len_age = map(train, ~lm(bwt ~ blength + gaweeks, data = .x)),
+         mod_hc_len_sex = map(train, ~lm(bwt ~ bhead + blength + babysex + bhead*blength + bhead*babysex + blength*babysex + bhead*blength*babysex, data = .x))) %>% 
+  mutate(rmse_inc_mrace    = map2_dbl(mod_inc_mrace, test, ~rmse(model = .x, data = .y)),
+         rmse_len_age = map2_dbl(mod_len_age, test, ~rmse(model = .x, data = .y)),
+         rmse_hc_len_sex = map2_dbl(mod_hc_len_sex, test, ~rmse(model = .x, data = .y)))
+
+```
+
+
+## Plot RMSE
+
+```{r}
+cv_df %>% 
+  select(starts_with("rmse")) %>% 
+  gather(key = model, value = rmse) %>% 
+  mutate(model = str_replace(model, "rmse_", ""),
+         model = fct_inorder(model)) %>% 
+  ggplot(aes(x = model, y = rmse)) + geom_violin()
+```
+
+
+```{r}
+rmse(lm_inc_mrace, birthweight_data)
+
+rmse(lm_len_age, birthweight_data)
+
+rmse(lm_hc_len_sex, birthweight_data)
+```
+
+
+The hc_len_sex model is the best because it has the lowest RMSE value of `r rmse(lm_hc_len_sex, birthweight_data)`. 
