@@ -1,7 +1,7 @@
 ---
 title: "p8105_hw6_ph2538"
 author: "Pei Yang Hsieh"
-date: 2018-11-18
+date: 2018-11-26
 output: github_document
 ---
 
@@ -117,15 +117,18 @@ Plot_all_cities =
   geom_point() +
   geom_errorbar(aes(ymin = conf.low, ymax = conf.high)) +
   labs(
-    title = "Estimates and CIs for All Cities",
+    title = "Estimated ORs and CIs for All Cities",
     x = "City",
-    y = "Estimates"
+    y = "Estimated ORs"
   )  +
   theme(axis.text.x = element_text(angle = 90)) 
 
 Plot_all_cities
 ```
 
+
+
+The plot shows the estimated ORs and respective confidence intervals for all cities. It shows that for Boston, the odds of solving homicides comparing nonwhite victims to white victims is the lowest compared to all the other cities. In contrast, Tampa, FL has the highest OR. 
 
 
 ## Problem 2
@@ -143,7 +146,7 @@ birthweight_data =
 
 ### Build a model
 
-Propose a regression model for birthweight. This model may be based on a hypothesized structure for the factors that underly birthweight, on a data-driven model-building process, or a combination of the two. Describe your modeling process and show a plot of model residuals against fitted values – use add_predictions and add_residuals in making this plot.
+Propose a regression model for birthweight. This model may be based on a hypothesized structure for the factors that underly birthweight, on a data-driven model-building process, or a combination of the two. 
 
 ```{r}
 mod_inc_mrace = 
@@ -163,6 +166,8 @@ modelr::add_predictions(mod_inc_mrace, lm_inc_mrace)
   
 ```
 
+This is a linear regression model of birthweight with family income and mother's race as predictors.
+
 ### Plot model
 
 ```{r}
@@ -179,13 +184,25 @@ mod_inc_mrace %>%
 ```
 
 
+## Plot of model residuals against fitted values
+
+Describe your modeling process and show a plot of model residuals against fitted values – use add_predictions and add_residuals in making this plot.
+
+```{r}
+birthweight_data %>% 
+  modelr::add_residuals(lm_inc_mrace) %>% 
+  modelr::add_predictions(lm_inc_mrace) %>% 
+  ggplot(aes(x = pred, y = resid)) + geom_point()
+```
+
+
+As mother race is a categorical variable with 4 categories, this plot shows four clusters. 
+
 ### Creating 2 other models
 
 Compare your model to two others:
 One using length at birth and gestational age as predictors (main effects only)
-One using head circumference, length, sex, and all interactions (including the three-way interaction) between these
-
-Make this comparison in terms of the cross-validated prediction error; use crossv_mc and functions in purrr as appropriate.
+One using head circumference, length, sex, and all interactions (including the three-way interaction) between these.
 
 ```{r}
 mod_len_age = 
@@ -225,18 +242,11 @@ modelr::add_predictions(mod_hc_len_sex, lm_hc_len_sex)
 
 ## Comparing 3 models
 
+Make this comparison in terms of the cross-validated prediction error; use crossv_mc and functions in purrr as appropriate.
+
 ```{r}
 cv_df = 
   crossv_mc(birthweight_data, 100) 
-
-# cv_df %>% pull(train) %>% .[[1]] %>% as_tibble
-# 
-# cv_df %>% pull(test) %>% .[[1]] %>% as_tibble
-# 
-# cv_df =
-#   cv_df %>% 
-#   mutate(train = map(train, as_tibble),
-#          test = map(test, as_tibble))
 
 cv_df = 
   cv_df %>% 
@@ -250,7 +260,7 @@ cv_df =
 ```
 
 
-## Plot RMSE
+## RMSE plot and values
 
 ```{r}
 cv_df %>% 
@@ -271,4 +281,4 @@ rmse(lm_hc_len_sex, birthweight_data)
 ```
 
 
-The hc_len_sex model is the best because it has the lowest RMSE value of `r rmse(lm_hc_len_sex, birthweight_data)`. 
+The hc_len_sex model is the best because it has the lowest RMSE value of `r rmse(lm_hc_len_sex, birthweight_data)`. In contrast, the inc_mrace is the worst model with the highest RMSE value of `r rmse(lm_inc_mrace, birthweight_data)`
