@@ -147,7 +147,9 @@ birthweight_data =
 
 ### Build a model
 
-Propose a regression model for birthweight. This model may be based on a hypothesized structure for the factors that underly birthweight, on a data-driven model-building process, or a combination of the two.  
+Propose a regression model for birthweight. This model may be based on a hypothesized structure for the factors that underly birthweight, on a data-driven model-building process, or a combination of the two.
+
+Describe your modeling process.
 
 ```{r}
 mod_inc_delwt = 
@@ -174,23 +176,15 @@ This is a linear regression model of birthweight with family income and mother's
 ```{r}
 mod_inc_delwt %>% 
   modelr::add_residuals(lm_inc_delwt) %>% 
-  ggplot(aes(x = delwt, y = resid)) + geom_violin()
+  ggplot(aes(x = delwt + fincome, y = resid)) + geom_violin()
 ```
 
 
-This plot shows that most of the residuals fall around 0 for mother's weight at delivery, which means it may be a good model.
-
-```{r}
-mod_inc_delwt %>% 
-  modelr::add_residuals(lm_inc_delwt) %>% 
-  ggplot(aes(x = fincome, y = resid)) + geom_violin()
-```
-
-Similarly, this plot shows that most of the residuals fall around 0 for family income, which means it may be a good model.
+This plot shows that most of the residuals fall around 0 for mother's weight at delivery plus family income, which means it may be a good model.
 
 ### Plot of model residuals against fitted values
 
-Describe your modeling process and show a plot of model residuals against fitted values – use add_predictions and add_residuals in making this plot.
+Show a plot of model residuals against fitted values – use add_predictions and add_residuals in making this plot.
 
 ```{r}
 birthweight_data %>% 
@@ -276,6 +270,9 @@ cv_df %>%
 ```
 
 
+The plot shows that the model using monthly family income and mother's weight at delivery (inc_delwt) is the worst model because it has the highest rmse values. It is noticeably much higher compared to the other two models. The third model (hc_len_sex) is the best model with the lowest rmse values.
+
+
 ```{r}
 rmse(lm_inc_delwt, birthweight_data)
 
@@ -285,4 +282,4 @@ rmse(lm_hc_len_sex, birthweight_data)
 ```
 
 
-The model using head circumference, length, sex, and all interactions (including the three-way interaction) between these (hc_len_sex) is the best model because it has the lowest RMSE value of `r rmse(lm_hc_len_sex, birthweight_data)`. In contrast, model using monthly family income and mother's weight at delivery (inc_delwt) is the worst model with the highest RMSE value of `r rmse(lm_inc_delwt, birthweight_data)`
+The RMSE values confirm what the plot shows. The model using head circumference, length, sex, and all interactions (including the three-way interaction) between these (hc_len_sex) is the best model because it has the lowest RMSE value of `r rmse(lm_hc_len_sex, birthweight_data)`. In contrast, model using monthly family income and mother's weight at delivery (inc_delwt) is the worst model with the highest RMSE value of `r rmse(lm_inc_delwt, birthweight_data)`
