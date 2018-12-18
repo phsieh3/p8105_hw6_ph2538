@@ -111,7 +111,7 @@ all_cities_glm
 
 Create a plot that shows the estimated ORs and CIs for each city. Organize cities according to estimated OR, and comment on the plot.
 
-```{r, eval = FALSE}
+```{r}
 Plot_all_cities =
   all_cities_glm %>% 
   ggplot(aes(fct_reorder(city_state, OR), OR)) +
@@ -126,7 +126,6 @@ Plot_all_cities =
 
 Plot_all_cities
 ```
-
 
 
 The plot shows the estimated ORs and respective confidence intervals for all cities. It shows that for Boston, the odds of solving homicides comparing nonwhite victims to white victims is the lowest compared to all the other cities. In contrast, Tampa, FL has the highest OR. 
